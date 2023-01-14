@@ -4,6 +4,9 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:qr_code_scanner/qr_code_scanner.dart';
+import 'package:qr_scanner_app/utils/colors.dart';
+import 'package:qr_scanner_app/widgets/icons_widget.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class QRViewExample extends StatefulWidget {
   const QRViewExample({Key? key}) : super(key: key);
@@ -28,93 +31,106 @@ class _QRViewExampleState extends State<QRViewExample> {
     controller!.resumeCamera();
   }
 
+  final List<IconData> icons = [
+    Icons.flash_on,
+    Icons.flip_camera_ios_outlined,
+    Icons.pause,
+    Icons.start
+  ];
+  final List<String> labels = ["Flash: On", "Flip Camera", "Pause", "Resume"];
+
+  @override
+  void initState() {
+    super.initState();
+  }
+
+  myFunction({required int index}) {
+    switch (index) {
+      case 0:
+        flashLight();
+        break;
+      case 1:
+        flipCamera();
+        break;
+      case 2:
+        pauseCamera();
+        break;
+      case 3:
+        resumeCamera();
+        break;
+    }
+  }
+
+  void flashLight() async {
+    await controller?.toggleFlash();
+    final flashStatus = await controller?.getFlashStatus();
+    print("getFlashStatus: $flashStatus");
+    setState(() {});
+  }
+
+  void flipCamera() async {
+    await controller?.flipCamera();
+    final cameraStatus = await controller?.getCameraInfo();
+    print("getCameraInfo: ${describeEnum(cameraStatus!).trim()}");
+    setState(() {});
+  }
+
+  void pauseCamera() async {
+    await controller?.pauseCamera();
+  }
+
+  void resumeCamera() async {
+    await controller?.resumeCamera();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Column(
         children: <Widget>[
-          Expanded(flex: 4, child: _buildQrView(context)),
-          Expanded(
-            flex: 1,
-            child: FittedBox(
-              fit: BoxFit.contain,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: <Widget>[
-                  if (result != null)
-                    Text(
-                        'Barcode Type: ${describeEnum(result!.format)}   Data: ${result!.code}')
-                  else
-                    const Text('Scan a code'),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: <Widget>[
-                      Container(
-                        margin: const EdgeInsets.all(8),
-                        child: ElevatedButton(
-                            onPressed: () async {
-                              await controller?.toggleFlash();
-                              setState(() {});
-                            },
-                            child: FutureBuilder(
-                              future: controller?.getFlashStatus(),
-                              builder: (context, snapshot) {
-                                return Text('Flash: ${snapshot.data}');
-                              },
-                            )),
-                      ),
-                      Container(
-                        margin: const EdgeInsets.all(8),
-                        child: ElevatedButton(
-                            onPressed: () async {
-                              await controller?.flipCamera();
-                              setState(() {});
-                            },
-                            child: FutureBuilder(
-                              future: controller?.getCameraInfo(),
-                              builder: (context, snapshot) {
-                                if (snapshot.data != null) {
-                                  return Text(
-                                      'Camera facing ${describeEnum(snapshot.data!)}');
-                                } else {
-                                  return const Text('loading');
-                                }
-                              },
-                            )),
-                      )
-                    ],
+          Expanded(child: _buildQrView(context)),
+          Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              if (result == null)
+                const Text(
+                  'Scan a code',
+                  style: const TextStyle(fontSize: 18, color: black),
+                ),
+              if (result != null) const SizedBox(height: 10),
+              if (result != null)
+                Text(
+                  "Barcode Type: ${result != null ? describeEnum(result!.format) : "No Data"}",
+                  style: const TextStyle(fontSize: 18, color: black),
+                ),
+              if (result != null) const SizedBox(height: 10),
+              if (result != null)
+                Text(
+                  "Data: ${result != null ? result!.code : "No Data"}",
+                  style: const TextStyle(fontSize: 18, color: black),
+                  maxLines: 6,
+                  softWrap: true,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              const SizedBox(height: 10),
+              Container(
+                color: grey900,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: List.generate(
+                    labels.length,
+                    (index) => InkWell(
+                      onTap: () => myFunction(index: index),
+                      child: IconsWidget(
+                          label: labels[index], iconData: icons[index]),
+                    ),
                   ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: <Widget>[
-                      Container(
-                        margin: const EdgeInsets.all(8),
-                        child: ElevatedButton(
-                          onPressed: () async {
-                            await controller?.pauseCamera();
-                          },
-                          child: const Text('pause',
-                              style: TextStyle(fontSize: 20)),
-                        ),
-                      ),
-                      Container(
-                        margin: const EdgeInsets.all(8),
-                        child: ElevatedButton(
-                          onPressed: () async {
-                            await controller?.resumeCamera();
-                          },
-                          child: const Text('resume',
-                              style: TextStyle(fontSize: 20)),
-                        ),
-                      )
-                    ],
-                  ),
-                ],
+                ),
               ),
-            ),
-          )
+              const SizedBox(height: 0),
+            ],
+          ),
         ],
       ),
     );
@@ -149,8 +165,16 @@ class _QRViewExampleState extends State<QRViewExample> {
     controller.scannedDataStream.listen((scanData) {
       setState(() {
         result = scanData;
+        if (result != null) {
+          // openUrl(data: result!.code!);
+        }
       });
     });
+  }
+
+  Future<void> openUrl({required String data}) async {
+    final Uri _url = Uri.parse(data);
+    await launchUrl(_url);
   }
 
   void _onPermissionSet(BuildContext context, QRViewController ctrl, bool p) {
