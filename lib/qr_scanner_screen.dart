@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:qr_code_scanner/qr_code_scanner.dart';
 import 'package:qr_scanner_app/utils/colors.dart';
 import 'package:qr_scanner_app/widgets/icons_widget.dart';
+import 'package:qr_scanner_app/widgets/icons_widget_2.dart';
+import 'package:qr_scanner_app/widgets/qr_code_data_view_widget.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class QRViewExample extends StatefulWidget {
@@ -19,6 +21,7 @@ class _QRViewExampleState extends State<QRViewExample> {
   Barcode? result;
   QRViewController? controller;
   final GlobalKey qrKey = GlobalKey(debugLabel: 'QR');
+  bool _isBottomSheetOpened = false;
 
   /// In order to get hot reload to work we need to pause the camera if the platform
   /// is android, or resume the camera if the platform is iOS.
@@ -38,11 +41,6 @@ class _QRViewExampleState extends State<QRViewExample> {
     Icons.start
   ];
   final List<String> labels = ["Flash: On", "Flip Camera", "Pause", "Resume"];
-
-  @override
-  void initState() {
-    super.initState();
-  }
 
   myFunction({required int index}) {
     switch (index) {
@@ -77,6 +75,7 @@ class _QRViewExampleState extends State<QRViewExample> {
 
   void pauseCamera() async {
     await controller?.pauseCamera();
+    debugPrint("Camera Paused");
   }
 
   void resumeCamera() async {
@@ -93,27 +92,6 @@ class _QRViewExampleState extends State<QRViewExample> {
             mainAxisAlignment: MainAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
-              if (result == null)
-                const Text(
-                  'Scan a code',
-                  style: const TextStyle(fontSize: 18, color: black),
-                ),
-              if (result != null) const SizedBox(height: 10),
-              if (result != null)
-                Text(
-                  "Barcode Type: ${result != null ? describeEnum(result!.format) : "No Data"}",
-                  style: const TextStyle(fontSize: 18, color: black),
-                ),
-              if (result != null) const SizedBox(height: 10),
-              if (result != null)
-                Text(
-                  "Data: ${result != null ? result!.code : "No Data"}",
-                  style: const TextStyle(fontSize: 18, color: black),
-                  maxLines: 6,
-                  softWrap: true,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              const SizedBox(height: 10),
               Container(
                 color: grey900,
                 child: Row(
@@ -137,7 +115,8 @@ class _QRViewExampleState extends State<QRViewExample> {
   }
 
   Widget _buildQrView(BuildContext context) {
-    /// For this example we check how width or tall the device is and change the scanArea and overlay accordingly.
+    /// For this example we check how width or tall the device
+    /// is and change the scanArea and overlay accordingly.
     var scanArea = (MediaQuery.of(context).size.width < 400 ||
             MediaQuery.of(context).size.height < 400)
         ? 150.0
@@ -165,16 +144,25 @@ class _QRViewExampleState extends State<QRViewExample> {
     controller.scannedDataStream.listen((scanData) {
       setState(() {
         result = scanData;
-        if (result != null) {
-          // openUrl(data: result!.code!);
+        if (result != null && _isBottomSheetOpened == false) {
+          _isBottomSheetOpened = true;
+          _showBottomSheet(
+            barCodeType: describeEnum(result!.format),
+            qrCodeData: result!.code!,
+          );
+          pauseCamera();
         }
       });
     });
   }
 
   Future<void> openUrl({required String data}) async {
-    final Uri _url = Uri.parse(data);
-    await launchUrl(_url);
+    final Uri url = Uri.parse(data);
+    await launchUrl(url);
+  }
+
+  void _closeBottomSheet() {
+    Navigator.pop(context);
   }
 
   void _onPermissionSet(BuildContext context, QRViewController ctrl, bool p) {
@@ -184,6 +172,71 @@ class _QRViewExampleState extends State<QRViewExample> {
         const SnackBar(content: Text('no Permission')),
       );
     }
+  }
+
+  void _showBottomSheet({
+    required String barCodeType,
+    required String qrCodeData,
+  }) {
+    showModalBottomSheet(
+        context: context,
+        backgroundColor: white,
+        isScrollControlled: true,
+        isDismissible: true,
+        enableDrag: true,
+        elevation: 1,
+        barrierColor: Colors.transparent,
+        shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(30))),
+        builder: (context) {
+          return DraggableScrollableSheet(
+            expand: false,
+            initialChildSize: 0.4,
+            maxChildSize: 0.9,
+            minChildSize: 0.32,
+            builder: (context, scrollController) {
+              return SingleChildScrollView(
+                controller: scrollController,
+                child: Container(
+                  decoration: const BoxDecoration(
+                    color: grey,
+                    borderRadius: BorderRadius.only(
+                      topRight: Radius.circular(20),
+                      topLeft: Radius.circular(20),
+                    ),
+                  ),
+                  child: Center(
+                    child: Column(
+                      children: [
+                        QRCodeDataViewWidget(
+                          barCodeType: barCodeType,
+                          qrCodeData: qrCodeData,
+                        ),
+                        const SizedBox(height: 0),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                          children: List.generate(
+                            labels.length,
+                            (index) {
+                              return IconsWidget2(
+                                label: labels[index],
+                                iconData: icons[index],
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          );
+        }).whenComplete(() {
+      debugPrint("Bottom Sheet closed");
+      _isBottomSheetOpened = false;
+      resumeCamera();
+    });
   }
 
   @override

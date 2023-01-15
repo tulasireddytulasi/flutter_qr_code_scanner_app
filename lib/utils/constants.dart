@@ -1,0 +1,2 @@
+const String textdata =
+    "In Java, Multithreading refers to a process of executing two or more threads simultaneously for maximum utilization of the CPU. A thread in Java is a lightweight process requiring fewer resources to create and share the process resources. Multithreading and Multiprocessing are used for multitasking in Java, but we prefer multithreading over multiprocessing. This is because the threads use a shared memory area which helps to save memory, and also, the content-switching between the threads is a bit faster than the process.";
