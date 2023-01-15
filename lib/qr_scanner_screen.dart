@@ -3,11 +3,13 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:qr_code_scanner/qr_code_scanner.dart';
 import 'package:qr_scanner_app/utils/colors.dart';
 import 'package:qr_scanner_app/widgets/icons_widget.dart';
 import 'package:qr_scanner_app/widgets/icons_widget_2.dart';
 import 'package:qr_scanner_app/widgets/qr_code_data_view_widget.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class QRViewExample extends StatefulWidget {
@@ -42,6 +44,14 @@ class _QRViewExampleState extends State<QRViewExample> {
   ];
   final List<String> labels = ["Flash: On", "Flip Camera", "Pause", "Resume"];
 
+  final List<IconData> icons2 = [
+    Icons.open_in_new,
+    Icons.copy,
+    Icons.share,
+    Icons.close,
+  ];
+  final List<String> labels2 = ["Open Link", "Copy", "Share", "Close"];
+
   myFunction({required int index}) {
     switch (index) {
       case 0:
@@ -57,6 +67,29 @@ class _QRViewExampleState extends State<QRViewExample> {
         resumeCamera();
         break;
     }
+  }
+
+  bottomSheetMethods({required int index}) {
+    switch (index) {
+      case 0:
+        openUrl(data: result!.code!);
+        break;
+      case 1:
+        copyText();
+        break;
+      case 2:
+        shareQRData();
+        break;
+      case 3:
+        _closeBottomSheet();
+        break;
+    }
+  }
+
+  void copyText() => Clipboard.setData(ClipboardData(text: result!.code));
+
+  void shareQRData() {
+    Share.share(result?.code ?? "");
   }
 
   void flashLight() async {
@@ -191,9 +224,9 @@ class _QRViewExampleState extends State<QRViewExample> {
         builder: (context) {
           return DraggableScrollableSheet(
             expand: false,
-            initialChildSize: 0.4,
+            initialChildSize: 0.25,
             maxChildSize: 0.9,
-            minChildSize: 0.32,
+            minChildSize: 0.2,
             builder: (context, scrollController) {
               return SingleChildScrollView(
                 controller: scrollController,
@@ -216,11 +249,14 @@ class _QRViewExampleState extends State<QRViewExample> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceAround,
                           children: List.generate(
-                            labels.length,
+                            labels2.length,
                             (index) {
-                              return IconsWidget2(
-                                label: labels[index],
-                                iconData: icons[index],
+                              return InkWell(
+                                onTap: () => bottomSheetMethods(index: index),
+                                child: IconsWidget2(
+                                  label: labels2[index],
+                                  iconData: icons2[index],
+                                ),
                               );
                             },
                           ),
