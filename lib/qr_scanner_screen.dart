@@ -24,6 +24,8 @@ class _QRViewExampleState extends State<QRViewExample> {
   QRViewController? controller;
   final GlobalKey qrKey = GlobalKey(debugLabel: 'QR');
   bool _isBottomSheetOpened = false;
+  bool? _flashStatus = false;
+  bool _isCameraPaused = false;
 
   /// In order to get hot reload to work we need to pause the camera if the platform
   /// is android, or resume the camera if the platform is iOS.
@@ -42,7 +44,15 @@ class _QRViewExampleState extends State<QRViewExample> {
     Icons.pause,
     Icons.start
   ];
-  final List<String> labels = ["Flash: On", "Flip Camera", "Pause", "Resume"];
+  String flashStatus = "";
+  List<String> labels = [];
+
+  @override
+  void initState() {
+    super.initState();
+    flashStatus = _flashStatus != null && _flashStatus! ? "On" : "Off";
+    setState(() {});
+  }
 
   final List<IconData> icons2 = [
     Icons.open_in_new,
@@ -94,8 +104,8 @@ class _QRViewExampleState extends State<QRViewExample> {
 
   void flashLight() async {
     await controller?.toggleFlash();
-    final flashStatus = await controller?.getFlashStatus();
-    print("getFlashStatus: $flashStatus");
+    _flashStatus = await controller?.getFlashStatus();
+    print("getFlashStatus: $_flashStatus");
     setState(() {});
   }
 
@@ -108,11 +118,14 @@ class _QRViewExampleState extends State<QRViewExample> {
 
   void pauseCamera() async {
     await controller?.pauseCamera();
+    _isCameraPaused = true;
     debugPrint("Camera Paused");
+    setState(() {});
   }
 
   void resumeCamera() async {
     await controller?.resumeCamera();
+    setState(() {});
   }
 
   @override
@@ -129,14 +142,43 @@ class _QRViewExampleState extends State<QRViewExample> {
                 color: grey900,
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: List.generate(
-                    labels.length,
-                    (index) => InkWell(
-                      onTap: () => myFunction(index: index),
+                  children: [
+                    InkWell(
+                      onTap: () => flashLight(),
                       child: IconsWidget(
-                          label: labels[index], iconData: icons[index]),
+                        label:
+                            "Flash: ${_flashStatus != null && _flashStatus! ? "On" : "Off"}",
+                        iconData: Icons.flash_on,
+                        iconData2: Icons.flash_off_outlined,
+                        isClicked: _flashStatus ?? false,
+                      ),
                     ),
-                  ),
+                    InkWell(
+                      onTap: () => flipCamera(),
+                      child: const IconsWidget(
+                        label: "Flip Camera",
+                        iconData: Icons.flip_camera_ios_outlined,
+                        iconData2: Icons.flip_camera_ios_outlined,
+                        isClicked: false,
+                      ),
+                    ),
+                    InkWell(
+                      onTap: () {
+                        if (_isCameraPaused) {
+                          _isCameraPaused = false;
+                          resumeCamera();
+                        } else {
+                          pauseCamera();
+                        }
+                      },
+                      child: IconsWidget(
+                        label: _isCameraPaused ? "Paused" : "Pause",
+                        iconData: Icons.not_started_rounded,
+                        iconData2: Icons.pause,
+                        isClicked: _isCameraPaused,
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 0),
@@ -190,8 +232,19 @@ class _QRViewExampleState extends State<QRViewExample> {
   }
 
   Future<void> openUrl({required String data}) async {
-    final Uri url = Uri.parse(data);
-    await launchUrl(url);
+    if (data.contains("http")) {
+      final Uri url = Uri.parse(data);
+      await launchUrl(url);
+    } else {
+      // Fluttertoast.showToast(
+      //     msg: "This is Center Short Toast",
+      //     toastLength: Toast.LENGTH_SHORT,
+      //     gravity: ToastGravity.CENTER,
+      //     timeInSecForIosWeb: 1,
+      //     backgroundColor: Colors.red,
+      //     textColor: Colors.white,
+      //     fontSize: 16.0);
+    }
   }
 
   void _closeBottomSheet() {
@@ -271,6 +324,7 @@ class _QRViewExampleState extends State<QRViewExample> {
         }).whenComplete(() {
       debugPrint("Bottom Sheet closed");
       _isBottomSheetOpened = false;
+      _isCameraPaused = false;
       resumeCamera();
     });
   }
